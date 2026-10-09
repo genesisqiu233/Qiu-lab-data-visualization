@@ -1,0 +1,8 @@
+[1,"==> quarto preview Data Visualization.qmd --to html --no-watch-inputs --no-browse\n\n"]
+[1,"pandoc \n  to: html\n  output-file: Data Visualization.html\n  standalone: true\n  embed-resources: true\n  title-prefix: Data Visualization Assignment\n  section-divs: true\n  html-math-method: mathjax\n  wrap: none\n  default-image-extension: png\n  toc: true\n  toc-depth: 3\n  \nmetadata\n  document-css: false\n  link-citations: true\n  date-format: long\n  lang: en\n  theme: cosmo\n  title: data visualization\n  editor: visual\n  author: Qiu Caotao (Genesis)\n  \n"]
+[1,"Output created: docs\\Data Visualization.html\n\n"]
+[1,"Preparing to preview\n"]
+[1,"\r[1/1] Data Viz Assignment Instructions.qmd\n"]
+[1,"\n"]
+[1,"Watching files for changes\nBrowse at http://localhost:4491/Data Visualization.html\nListening on http://127.0.0.1:4491/\n"]
+[1,"GET: /Data Visualization.html\n"]

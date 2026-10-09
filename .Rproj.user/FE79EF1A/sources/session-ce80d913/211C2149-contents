@@ -1,0 +1,248 @@
+---
+title: "9041 Assignment 2"
+author: Qiu Caotao (Genesis)
+date: 09/25/2026
+format: 
+    html:
+      toc: true
+      code-fold: true
+      code-summary: "Show code"
+      df-print: paged
+execute:
+    echo: false
+    warning: false
+editor: 
+  markdown: 
+    wrap: 72
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, load libraries}
+#install.packages("tidyverse")
+#install.packages("psych")
+#install.packages("readxl") 
+#install.packages("gt")
+#install.packages("janitor")
+#install.packages("naniar")
+
+library(tidyverse)
+library(readxl)
+library(psych)
+library(gt)
+library(janitor)
+library(naniar)
+```
+
+```{r}
+#| output: FALSE
+
+# Load data
+data<-read_excel("./Attachment_Anxiety_Data.xlsx")
+
+
+# Inspect data
+head(data)
+```
+
+```{r, clean data}
+#| output: FALSE
+
+# Extract for only variables Gender, Age group, Relationship Status, Ethnicity and survery response column
+# Mutate to convert survey response column to integers
+
+aad.clean <- data |>
+    mutate(Gender = case_when(`Gender`==1 ~ "Male", `Gender`==2 ~"Female", TRUE ~ "NA")) |> 
+    mutate(Age.Group = case_when(`Age group`==1 ~ "18-24", `Age group`==2 ~ "25-34", `Age group`==3 ~ "35-44", `Age group`==4 ~ "45-54", `Age group`==5 ~ "55-64", TRUE ~ "NA")) |>
+    mutate(Relationship.Status = case_when(`Relationship`==1 ~ "married", `Relationship`==2 ~ "in a relationship", `Relationship`==4 ~ "divorced", `Relationship`==5 ~ "in a relationship", `Relationship`==6 ~ "never been in a relationship", `Relationship`==7 ~ "prefer not to say", TRUE ~ "NA")) |>
+    mutate(Ethnicity = case_when(`Ethnicity`==1 ~ "white/Caucasian", `Ethnicity`==2 ~ "Asian/Asian British", `Ethnicity`==5 ~ "Other ethnic group", `Ethnicity`==6 ~ "prefer not to say", TRUE ~ "NA")) |>
+    select(Gender, Age.Group, Relationship.Status, Ethnicity, SA_1:SEst_10) |>
+    mutate_at(5:43, as.integer)
+```
+
+```{r, score items}
+#| output: FALSE
+
+# Answer key: which items belong to each subscale.
+# "-" marks reverse-coded items
+
+keys.SA<- list(SA=c("SA_1", "SA_2", "SA_3","SA_4","-SA_5", "SA_6", "SA_7", "SA_8", "-SA_9", "SA_10", "-SA_11", "SA_12", "SA_13", "SA_14", "SA_15", "SA_16", "SA_17", "SA_18", "SA_19", "SA_20"))
+keys.AA<- list(AA=c("AA_1", "AA_2", "AA_3","AA_4","AA_5", "AA_6", "AA_7", "AA_8", "AA_9"))
+keys.SEst<- list(SEst=c("SEst_1", "-SEst_2", "SEst_3","SEst_4","-SEst_5", "-SEst_6", "SEst_7", "-SEst_8", "-SEst_9", "SEst_10"))
+
+# Average items per person, and compute Cronbach's alpha.
+# Returns $scores (per-person scores as averages since we set totals to F) and $alpha (reliability)
+scores.SA<-scoreItems(keys.SA, aad.clean, totals = F, min=1, max=4)
+scores.AA<-scoreItems(keys.AA, aad.clean, totals = F, min=1, max=7)
+scores.SEst<-scoreItems(keys.SEst, aad.clean, totals = F, min=1, max=4)
+# Turn this into a dataframe!
+scores_scale1.df<-as.data.frame(scores.SA$scores)
+scores_scale2.df<-as.data.frame(scores.AA$scores)
+scores_scale3.df<-as.data.frame(scores.SEst$scores)
+```
+
+```{r, combine data frames}
+#| output: FALSE
+
+# Combine the original data set with the new scores dataframe
+allscores.df<-cbind(scores_scale1.df, scores_scale2.df, scores_scale3.df)
+aad.clean<-cbind(aad.clean, allscores.df)
+# Inspect new data set
+head(aad.clean)
+```
+
+```{r, reduced data}
+#| output: FALSE
+
+# Select only for the columns which you want to appear in your final data table
+aad.final<- aad.clean |>
+    select("Gender", "Age.Group", "Ethnicity", "Relationship.Status", "SA", "AA", "SEst") |>
+    mutate_if(is.numeric, round, 2)
+```
+
+```{r, reproducible table for gender distribution by age group}
+#| output: FALSE
+
+# Create a demographics table of education by gender
+demographic.table <- aad.final |>
+  tabyl(Gender, Age.Group)
+
+# Create your reproducible gt table
+gttable.1 <- demographic.table |>
+  gt() |>
+  tab_header(
+    title = md("*Distribution of Males and Females by Age Group*")
+  )
+
+```
+
+```{r, reproducible score table}
+#| output: FALSE
+
+# Round Cronbach's alpha values to 2 decimal places.
+alphas <- round(c(scores.SA$alpha, scores.AA$alpha, scores.SEst$alpha), 2)
+
+# Summary statistics for certain columns
+summary <- describe(select(aad.final, "SA":"SEst"))
+summary
+
+# Label sample size for later in your reproducible document using describe
+n <- (describe(aad.final))[1,2]
+
+# Name an object of Subscales so this can appear in your table
+Subscales <- c("SA", "AA", "SEst")
+
+# Create a column called Subscales in your summary table
+summary$Subscales <- Subscales
+
+# Select for only the columns which you want to appear in your final table
+summary <- summary |>
+    select(Subscales, mean, median, sd, range) |>
+       mutate_if(is.numeric, round, 2)
+
+# Combine summary information with alpha values
+final.reptable <- cbind(summary, alphas)
+
+# Create a reproducible table
+gttable.2<- gt(final.reptable) |>
+    tab_header(
+        title = md("*Descriptive Statistics for the Psych Graduate survey*")) |>
+    tab_stubhead(label= "Composites")|>
+    tab_spanner(
+        label="Central Tendency",
+        columns = c(mean, median)
+    )|>
+        tab_spanner(
+        label="Variability",
+        columns = c(sd, range)
+        ) |>
+        tab_spanner(
+        label="Reliability Values (Chronbach's alpha)",
+        columns = c(alphas)
+            ) 
+gttable.2
+
+```
+
+```{r, filtered dataset}
+#| output: FALSE
+
+# Use filter to extract only those participants who are in a relationship and age between 25 to 34
+
+aad.filtered <- aad.clean |>
+    filter(Relationship.Status == "in a relationship" & Age.Group == "25-34")
+
+# Checking that age restriction worked
+table(aad.filtered$Age.Group) 
+```
+
+```{r, reproducible FILTERED table for Pysch Graduate Statistics}
+#| output: FALSE
+
+# Round Cronbach's alpha values to 2 decimal places. t transposes the data, which is not needed with the other data set.
+alphas_filtered <- round(c(scores.SA$alpha, scores.AA$alpha, scores.SEst$alpha), 2)
+
+# Summary statistics for certain columns
+summary_filtered <- describe(select(aad.filtered, "SA":"SEst"))
+summary_filtered
+
+# Name an object of Subscales so this can appear in your table
+Subscales_filtered <- c("SA", "AA", "SEst")
+
+#Create a column called Subscales in your summary table
+summary_filtered$Subscales_filtered <- Subscales_filtered
+
+# Select for only the columns which you want to appear in your final table
+summary_filtered <- summary_filtered |>
+    select(Subscales_filtered, mean, median, sd, range) |>
+       mutate_if(is.numeric, round, 2)
+
+# Combine summary information with alpha values
+filtered.reptable <- cbind(summary_filtered, alphas_filtered)
+
+# Create a reproducible table
+gttable.3<- gt(filtered.reptable) |>
+    tab_header(
+        title = md("*Descriptive Statistics for Psych Graduate survey in people who are between 25 to 34 and in a relationship*")) |>
+    tab_stubhead(label= "Composites")|>
+    tab_spanner(
+        label="Central Tendency",
+        columns = c(mean, median)
+    )|>
+        tab_spanner(
+        label="Variability",
+        columns = c(sd, range)
+        )|>
+            tab_spanner(
+        label="Reliability Values (Chronbach's alpha)",
+        columns = c(alphas_filtered)
+            ) 
+gttable.3
+```
+## Intro
+
+## Methods
+
+### Participants
+
+In this data set there were `{r} n` participants, separated to different age groups by gender (Table 1).
+
+`{r} gttable.1`
+
+### Measures
+
+In this Psychology graduate student survey, there are three 3 question sets measuring different aspects of individual degree of social anxiety. SA, which refers to Social Interaction Anxiety Scale Question, (Cronbach's alpha = `{r} alphas[1]`). AA, which refers to Experiences in Close Relationships Anxiety Subscale Question,  (Cronbach's alpha = `{r} alphas[2]`). SEst, which refers to Rosenberg Self-Esteem Scale Question (Cronbach's alpha = `{r} alphas[3]`).
+
+### Data Analysis Strategy
+
+In the Social Interaction Anxiety Scale responses (SA), items 5, 9, and 11 are reverse keyed. In the Rosenberg Self-Esteem Scale (SEst), items 2, 5, 6, 8, and 9 are reverse keyed. No item in Close Relationship Anxiety Subscale Question (AA) is reverse keyed.
+
+## Results
+
+`{r} gttable.2`
+In this Psychology graduate student survey, participants had a mean score on SA of `{r} final.reptable[1,2]`, on AA of `{r} final.reptable[2,2]`, on SEst of `{r} final.reptable[3,2]`.
+
+`{r} gttable.3`
+When only including participants between 25 to 34 and in a relationship, participants had a mean score on SA of `{r} filtered.reptable[1,2]`, on AA of `{r} filtered.reptable[2,2]`, on SEst of `{r} filtered.reptable[3,2]`.
+
+## Discussion

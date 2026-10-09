@@ -1,0 +1,7 @@
+"0","ai_data_tertiles <- ai_data |>"
+"0","  mutate("
+"0","    Risk_Tier = ntile(`Automation_Risk_%`, 3),"
+"0","    Risk_Tier = factor(Risk_Tier, labels = c(""Low Risk (5.0-16.7%)"", "
+"0","                                             ""Moderate Risk (16.8-28.5%)"", "
+"0","                                             ""High Risk (28.6-40.0%)""))"
+"0","  )"
